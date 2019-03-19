@@ -24,8 +24,8 @@ main:
 	syscall 
 
 	li $v0,5
-	sw $v0, init_size   	# Leemos size
 	syscall
+	sw $v0, init_size   	# Leemos size
 	 
 	
 	# LLamamos a init
@@ -47,11 +47,37 @@ init:
 	
 	
 	# syscall allocate
-	li  $v0, 9    
+	li  $v0, 9
 	lw $a0,init_size      # Creamos el espacio de tamano size (allocate)
+	syscall   
+	 
+	# Guardamos en la etiqueta el valor de v0
+	sw $v0,ini_bloq
+
+	# Guardamos el tamanio en un registro
+	lw $t0,init_size
+	lw $t1,ini_bloq
+	
+	# Sumamos la cantidad de espacio para saber donde termina nuestro bloque
+	add $t2,$t1,$t0
+	
+	# Guardamos en la etiqueta el valor de t0
+	sw $t2,fin_bloq
+	
+	li $v0,34
+	lw $a0,ini_bloq
 	syscall
 	
+	li $v0,4
+	la $a0,newLine
+	syscall
 	
+
+	li $v0,34
+	lw $a0,fin_bloq
+	syscall
+	
+		
 	# syscall de imprimir init exitoso
 	li $v0,4
 	la $a0,init_suc_msg   # Imprimir mensaje de allocate succesfull
