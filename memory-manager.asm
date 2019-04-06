@@ -3,6 +3,7 @@
 	HEAP_SIZE:    .byte   100
 	init_size:    .byte   0
 	freeList:     .byte   0:100
+	addressList:  .byte   0:100
 	
 	ini_bloq:     .word   0  # etiqueta que denota la direccion de inicio del bloque del init
 	fin_bloq:     .word   0  # etiqueta que denota la direccion del final de bloque del init
@@ -32,23 +33,42 @@ main:
 	# LLamamos a init
 	jal init
 	
-	li $v0,4
-	la $a0,newLine      # Imprimir mensaje de bienvenida
-	syscall 
+	
+	# Inicializamos el registro s1 que es donde se actualiza la dir de memoria del malloc anterior
+	lw $s1,ini_bloq
 	
 	li $v0,4
-	la $a0,msize_msg      # Imprimir mensaje de malloc
+	la $a0,newLine      # Imprimir salto de linea
 	syscall 
 	
-	# Leemos tamano malloc
-	li $v0,5
-	syscall
-	move $a0, $v0  
+
+		li $v0,4
+		la $a0,msize_msg      # Imprimir mensaje de malloc
+		syscall 
 	
-	# Llamamos a malloc
-	jal malloc
-	
-	j exit
+		# Leemos tamano malloc
+		li $v0,5
+		syscall
+		move $a0, $v0
+		
+		
+		# Guardamos en el stack el tamano de malloc y la direccion inicial antes de llamarlo
+		addi $sp, $sp, -8
+        	sw   $s1, 0($sp)
+        	sw   $a0, 4($sp)
+				
+		# Llamamos a malloc
+		jal malloc
+		
+		# Leemos direccion de free
+		li $v0,5
+		syscall
+		move $a0, $v0 
+		
+		jal exit
+		
+		
+		
 	
 
 init:
@@ -93,7 +113,6 @@ malloc:
 
 
 	lb $s0, init_size    # Cargamos el valor de init size en t0
-	lw $s1, ini_bloq
 	lw $s2, fin_bloq
 	
 	# Inicializamos t0 en 0
@@ -119,9 +138,8 @@ malloc:
 		# Si el contador de ceros es igual a la cantidad de bytes para el malloc
 		beq $t2,$a1,malloc_success
 		
-		# Si el indice del arreglo 
-		lb $s3,init_size
-		beq $t0,$s3,malloc_error
+		# Si el indice del arreglo alcanza el tamano de init
+		beq $t0,$s0,malloc_error
 		
 		# Guardamos el valor de cada posicion del arreglo
 		lb $t1,freeList($t0)
@@ -130,8 +148,7 @@ malloc:
 		beq $t1, 0, counter_0
 		
 		# Branch a una funcion que reinicia el contador de ceros si aparece un 1
-		beq $t1, 1, counter_1
-		
+		bnez $t1,counter_1
 		
 		# Contador de ceros
 		counter_0:
@@ -139,7 +156,7 @@ malloc:
 		  
 		  addi $t4,$t0,-1
 		  
-		  beq $t4,1,freeList_pointer
+		  bnez $t4,freeList_pointer
 		  
 		  freeList_pointer:
 		  
@@ -160,19 +177,35 @@ malloc:
 		  
 		  j while
 		  
-	malloc_success:
+	malloc_success:	
+		
+          	# Restauramos direccion de inicio de memoria y tamano del malloc hecho
+      
+        	#lw   $s1, 0($sp)
+        	#lw   $a0, 4($sp)
+        	#addi $sp, $sp, 8
+        	
+        	# Nueva direccion
+        	#add $s1,$s1,$a0
+        	
 	
-		# Llenamos con 1's las posiciones desocupadas
+		# Llenamos con n's las posiciones desocupadas
 		add $t4,$t3,$a0	
-		li $s3,1
+		
 		loop_1:
-			# Guardar en stack $t3
-			
-				
 			beq  $t3,$t4,print_message
    
-          		# Modifico el valor de memoria  e incremento el indice 
-          		sb $s3,freeList($t3)
+          		# Modifica el valor de freeList por n
+          		sb $a0,freeList($t3)
+          		
+          		
+          		# Agrega la direccion inicial en las casillas correspondientes
+          		#sb $s1,addressList($t3)
+          		
+          		#li $v0,1
+			#lb $a0,addressList($t3)
+			#syscall 
+			
           		addi $t3, $t3, 1
              
           		j loop_1
@@ -183,31 +216,41 @@ malloc:
 			li $v0,4
 			la $a0,malloc_success_msg
 			syscall
+			
+			lb $s0,init_size
+			li $t0,0
+			 
+				
+			print_array:
+				
+			
+				beq  $t0, $s0, exit
+
+				# Recupero el valor de memoria  e incremento el indice 
+				lb $t6, freeList($t0)
+				addi $t0, $t0, 1
+				
+				#Imprime el valor actual
+				li  $v0, 1
+				move $a0,$t6
+				syscall
+			
+				# Print a new line
+				li $v0, 4
+				la $a0, newLine
+				syscall
+			
+				 j print_array
+		
 		 
-		 li $t0,0
-		 print_array:
-		 
-		 	beq  $t0, $s0, exit
-   
-          		# Recupero el valor de memoria  e incremento el indice 
-          		lb $t6, freeList($t0)
-          		addi $t0, $t0, 1
-             
-          		#Imprim el valor actual
-          		li  $v0, 1
-          		move $a0, $t6
-          		syscall
-          
-          		#Print a new line
-          		li $v0, 4
-          		la $a0, newLine
-          		syscall
-          
-          		j print_array
-		 	
 			jr $ra 
+	
+	
 
-
+free: 
+	lw $s1,-8($sp)
+	
+	
 
 
 
