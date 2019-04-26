@@ -562,7 +562,7 @@ init_error:
 	j perror
 	
 malloc_error:
-	# Maneja el error del free
+	# Maneja el error del malloc
 	li $v0,0       
 	addi $v0, $zero, -2
 	
