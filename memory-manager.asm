@@ -7,7 +7,6 @@
 	ini_bloq:     .byte   0  # etiqueta que denota la direccion de inicio del bloque del init
 	fin_bloq:     .byte   0  # etiqueta que denota la direccion del final de bloque del init
 	
-	wel_msg:             .asciiz "Ingrese el tamaño de memoria que desea inicializar: "
 	msize_msg:           .asciiz "Ingrese el tamaño de memoria que desea asignar:  "
 	menu_msg:            .asciiz "Indique la operacion que desea realizar: "
 	newLine:             .asciiz "\n"
@@ -18,74 +17,22 @@
 	free_error_msg:      .asciiz "Error: la direccion ingresada no es correcta"
 	free_success_msg:    .asciiz "Memoria liberada correctamente"	 
 .text 
-
-main: 
-	li $v0,4
-	la $a0,wel_msg      # Imprimir mensaje de bienvenida
-	syscall 
 	
-	li $v0,5
-	syscall
-	sb $v0, init_size   	# Leemos size
-	 
-	
-	# LLamamos a init
-	jal init
-	
-	
-	# Inicializamos el registro s1 que es donde se actualiza la dir de memoria del malloc anterior
-	lb $s1,ini_bloq
-	
-	li $v0,4
-	la $a0,newLine      # Imprimir salto de linea
-	syscall 
-	
-
-		
-		
-		
-		# Guardamos en el stack el tamano de malloc y la direccion inicial antes de llamarlo
-		addi $sp, $sp, -8
-        	sw   $s1, 0($sp)
-        	sw   $a0, 4($sp)
-		
-		loop_malloc:
-		
-		li $v0,4
-		la $a0,msize_msg      # Imprimir mensaje de malloc
-		syscall 
-	
-		# Leemos tamano malloc
-		li $v0,5
-		syscall
-		move $a0, $v0
-			
-			
-		# Llamamos a malloc
-		jal malloc
-		
-		bnez $a0,loop_malloc
-		
-		# Leemos direccion de free
-		#li $v0,5
-		#syscall
-		#move $a0, $v0 
-		
-		jal exit
-		
-		
-		
-	
-
 init:
-	lb $s0,init_size      # Almacenamos size en un registro temporal
-	lb $s1,HEAP_SIZE      # Almacenamos HEAP_SIZE en un registro temporal
+
+	# a0 es el parametro que recibe
+	# s0 es el heap size
+	# s1 es 0 o 1 si size es menor que heap size
+	# t2 contiene la direccion donde termina la memoria reservada
+	# v0 contiene la direccion de inicio de la memoria reservada
+	
+	
+	lb $a0,init_size      # Almacenamos size en un registro temporal
+	lb $s0,HEAP_SIZE      # Almacenamos HEAP_SIZE en un registro temporal
 	
 	
 	# Verificamos que el init pueda hacerse
-	sgt $v0,$s0,$s1
-	bgt $s0,$s1,init_error # Va a la etiqueta init_error si $s0 > $s1
-	
+	bgt $a0,$s0,init_error # Va a la etiqueta init_error si $s0 > $s1
 	
 	# syscall allocate
 	li  $v0, 9
@@ -99,32 +46,23 @@ init:
 	lb $t0,init_size
 	lb $t1,ini_bloq
 	
-	
 	# Sumamos la cantidad de espacio para saber donde termina nuestro bloque
 	add $t2,$t1,$t0
 	
 	# Guardamos en la etiqueta el valor de t0
 	sb $t2,fin_bloq
 	
-	# Reiniciamos los apuntadores
-	li $s2,0
-	li $s1,16
+	# Calculamos pool size para el free list
+	mul $t3,$t0,16
 	
-	mul $s1,$s1,$s0
-
+	# Guardamos los valores en el freeList
+	sb $v0,freeList($zero)
+	sb $t2,freeList($t3)
 	
-	
-	# Guardamos las direcciones inicial y final en freeList
-	sb $t1,freeList($s2)
-	
-	sb $t2,freeList($s1) 
-	
-			
-	# syscall de imprimir init exitoso
-	li $v0,4
-	la $a0,init_success   # Imprimir mensaje de allocate succesfull
-	syscall 
-	
+	# Abrimos stack para guardar la direccion inicial
+     	addi $sp,$sp,-8
+     	sb $t1,4($sp)
+	 
 	
 	jr $ra
 	
@@ -454,7 +392,7 @@ free:
 			j print_msg_free
 			
 			
-.text
+
 
 		###################################		
 		#  FUNCIONES AUXILIARES           #
@@ -593,7 +531,7 @@ print_init:
 	la $a0,init_error_msg
 	syscall
 	
-	j exit
+	jr $ra
 	
 print_malloc:
 
@@ -601,7 +539,7 @@ print_malloc:
 	la $a0,malloc_error_msg
 	syscall
 	
-	j exit
+	jr $ra
 	
 print_free:
 
@@ -609,7 +547,7 @@ print_free:
 	la $a0,free_error_msg
 	syscall
 	
-	j exit
+	jr $ra
 
 exit:
 	li $v0, 10
