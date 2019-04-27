@@ -128,22 +128,22 @@ malloc:
 		  
 		  
 	malloc_success:	
-		
-          	# Restauramos direccion de inicio de memoria y tamano del malloc hecho
-      
-        	#lw   $s1, 0($sp)
-        	#lw   $a0, 4($sp)
-        	#addi $sp, $sp, 8
-        	
-        	# Nueva direccion
-        	#add $s1,$s1,$a0
+	
         	
         	# Modificamos la disponibilidad
         	li $t1,1
         	sb $t1,freeList($t0)
         	
+        	# Guardamos la direccion de inicio
+      		addi $t0,$t0,-4
+      		lb $v0,freeList($t0)
+      		addi $t0,$t0,4  
+        	
         	# Verificamos el tamanio
         	bgt $t3,$a0,resize
+        	
+        	# Si son iguales, no hay que hacer mas nada
+        	beq $t3,$a0,goback
         	
         	# Si no existe caja creada
         	beqz $t3,create_box
@@ -159,11 +159,14 @@ malloc:
         	   sb $t1,freeList($t0)
         	   
         	   # Actualizamos direccion inicial del bloque
-        	   addi $t1,$t1,4
+        	   addi $t1,$t1,$a0
         	   
         	   # Guardamos direccion inicial del bloque
         	   addi $t0,$t0,4
         	   sb $t1,freeList($t0)
+        	   
+        	   # $v0 contiene la direccion de inicio del bloque
+        	   move $v0,$t1
         	   
         	   
         	   # Para la direccion final
@@ -270,25 +273,9 @@ malloc:
         	     	# Devolvemos el apuntador a disponibilidad
         	     	addi $t0,$t0,-4
         	     	
-        	     	j print_message
+        	     	jr $ra
         	     
-        	     
-			
-		print_message:
-		
-			# Imprime mensaje de exito
-			li $v0,4
-			la $a0,malloc_success_msg
-			syscall
-			
-			li $v0,4
-			la $a0,newLine      # Imprimir salto de linea
-			syscall 
-	
-			
-			jr $ra
-	
-
+ 	
 free: 
 	li $t0,4
 	
@@ -335,12 +322,17 @@ free:
 			# La guardamos en el registro
 			lb $t1,freeList($t0)
 			
+			# Obtenemos size
+			addi $t0,$t0,8
+			lb $t4,freeList($t0)
+			addi $t0,$t0,-8
+			
 			# Guardamos la direccion a la izquierda en un registro
-			addi $t1,$t1,-4 
+			sub $t1,$t1,$t4
 			
 			
 			# Guardamos el apuntador en un registro
-			# T5 APUNTA A DIRECCION INCIAL DE BLOQUE A LA IZQUIERDA
+			# T5 APUNTA A DIRECCION INCIAL DE BLOQUE A LA DERECHA
 			move $t5,$t0
 			
 			# Movemos el apuntador
@@ -349,11 +341,7 @@ free:
 			# Guardamos la direccion final del bloque actual
 			lb $t2,freeList($t0)
 			
-			# Guardamos el size del bloque actual
-			addi $t0,$t0,-4
-		
-			lb $t4,freeList($t0)
-			
+	
 		
 			# Seteamos t0 en el primer apuntador a direccion final
 			li $t0,12
@@ -374,7 +362,7 @@ free:
 			lb $t1,freeList($t5)
 			
 			# Guardamos la direccion a la derecha en un registro
-			addi $t2,$t1,4 
+			addi $t1,$t1,$t4 
 			
 
 			# Guardamos en t3 el size del bloque actual
@@ -385,18 +373,16 @@ free:
 			# Seteamos t0 en el primer apuntador a direccion inicial
 			li $t0,4
 			
+			
 			# Buscamos con busqueda lineal
-			jal while_2
+			j while_2
 				  
-			# Despues de verificar, se imprime el mensaje de exito
-			j print_msg_free
 			
 			
 
-
-		###################################		
-		#  FUNCIONES AUXILIARES           #
-		###################################
+###################################		
+#  FUNCIONES AUXILIARES           #
+###################################
 while_2:
 	lb $t3,freeList($t0)
 				
@@ -407,13 +393,18 @@ while_2:
 	addi $s0,$t0,16
 				
 	lb $s1,fin_bloq
-				
-	beq $s0,$s1,print_msg_free
-				
+	
+	# recuperamos el valor de $ra del stack
+	addi $sp,$sp,-4
+	lw $ra,0($sp)
+	
+	# Regresar, free exitoso						
+	beq $s0,$s1,goback
 				
 	# Sino, regresa al ciclo
 	addi $t0,$t0,16
 	j while_2
+	
 				
 				
 segunda_cond2:
@@ -446,6 +437,8 @@ merge:
 				  
 	# Lo salvamos en el arreglo
 	sb $t1,freeList($t0)
+	
+	j zero
 				  
 # Seteamos con 0 las casillas del bloque anterior
 zero:
@@ -457,7 +450,17 @@ zero:
 				  	
 	# saltamos a la etiqueta
 	blt $t5,12,zero
+	
+	# recuperamos el valor de $ra del stack
+	addi $sp,$sp,-4
+	lw $ra,0($sp)
+	
+	beq $t5,12,goback
 
+goback:
+	jr $ra
+				
+	
 				  					  	
 ###################################		
 #  IMPRIMIR MENSAJES              #
@@ -500,7 +503,7 @@ init_error:
 	j perror
 	
 malloc_error:
-	# Maneja el error del malloc
+	# Maneja el error del free
 	li $v0,0       
 	addi $v0, $zero, -2
 	

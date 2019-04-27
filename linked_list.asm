@@ -43,8 +43,9 @@ name:       .asciiz     "Ingrese el nombre: "
 id:         .asciiz     "Ingrese la cedula: "
 modelo:     .asciiz     "Ingrese el modelo de vehiculo: "
 wel_msg:    .asciiz     "Bienvenido a su manejador de memoria"
-create_msg:   .asciiz    "Ingrese el tamaño de memoria que desea inicializar: "
-menu_msg:   .asciiz     "Indique 1 si desea insertar en la lista o 2 si desea eliminar"
+create_msg:   .asciiz   "Ingrese el tamaño de memoria que desea inicializar: "
+create_success:   .asciiz   "Lista creada con exito. La cabeza se encuentra en: "
+menu_msg:   .asciiz     "Indique 1 si desea insertar en la lista o 2 si desea eliminar y 0 para salir"
 
     # global registers:
     #   s0 -- list head pointer (list_head)
@@ -73,84 +74,48 @@ main:
      syscall
      sb $v0,init_size   # Leemos size
      
-     # Abrimos stack para guardar valores
-     move $a0,$v0
-     addi $sp,$sp,-4
-     sb $a0,0($sp)
-	 
-     jal create         # Llamamos a create	
-		
-     # Guardamos en el stack el tamano de malloc y la direccion inicial antes de llamarlo
-     addi $sp, $sp, -8
-     sw   $s1, 0($sp)
-     sw   $a0, 4($sp)
-		
-     loop_malloc:
-		
-	li $v0,4
-	la $a0,msize_msg      # Imprimir mensaje de malloc
-	syscall 
-	
-	# Leemos tamano malloc
-	li $v0,5
-	syscall
-	move $a0, $v0
-			
-			
-	# Llamamos a malloc
-	jal malloc
-		
-	bnez $a0,loop_malloc
-		
-	# Leemos direccion de free
-	#li $v0,5
-	#syscall
-	#move $a0, $v0 
-		
-	jal exit
-		
-    
+      
+     jal create         # Llamamos a create
+     
+loop_main:
 
-main_loop:
-    # prompt user for string
-    la      $a0,STR_ENTER
-    jal     print_string
+     li $v0,4
+     la $a0,newLine      # Salto de linea
+     syscall 
 
-    # read in string from user
-    jal     read_string
+     li $v0,4
+     la $a0,menu_msg      # Mensaje de menu
+     syscall
+     
+     li $v0,5
+     syscall   # Leemos opcion
+     
+     
+     # Ve a insert si opcion 1
+     beq $v0,1,insert_option
+     
+     # Ve a delete si opcion 2
+     beq $v0,2,delete_option
+     
+     # se cierra el programa si es 0
+     beqz $v0,exit
+     
+     # vuelve a iterar si no es 0
+     j loop_main
+     
+     
 
-    # save the string pointer as we'll use it repeatedly
-    move    $s1,$v0
+##################################################
+# Rutinas de menu
+##################################################
 
-    # strip newline
-    move    $a0,$s1
-    jal     nltrim
+insert_option:
 
-    # get string length and save the length
-    move    $a0,$s1
-    jal     strlen
 
-    # stop if given empty string
-    blez    $v0,main_exit
 
-    # insert the string
-    jal     insert
-
-    j       main_loop
-
-main_exit:
-    move    $a0,$s0
-    jal     print_list
-
-    jal     print_newline
-
-    # exit simulation via syscall
-    li      $v0,10
-    syscall
-
-    ##################################################
-    # String routines
-    ##################################################
+##################################################
+# String routines
+##################################################
 
 # read_string: allocates MAX_STR_LEN bytes for a string
 # and then reads a string from standard input into that memory address
@@ -212,24 +177,6 @@ strlen_loop:
     subi    $v0,$v0,1               # get length (compensate for pre-increment)
     jr      $ra                     # return
 
-# strcmp: given strings s, t stored at addresses in $a0, $a1
-# returns <0 if s < t; 0 if s == t, >0 if s > t
-# clobbers: t0, t1
-strcmp:
-    lb      $t0,0($a0)              # get byte of first char in string s
-    lb      $t1,0($a1)              # get byte of first char in string t
-
-    sub     $v0,$t0,$t1             # compare them
-    bnez    $v0,strcmp_done         # mismatch? if yes, fly
-
-    addi    $a0,$a0,1               # advance s pointer
-    addi    $a1,$a1,1               # advance t pointer
-
-    bnez    $t0,strcmp              # at EOS? no=loop, otherwise v0 == 0
-
-strcmp_done:
-    jr      $ra                     # return
-
 ########################################
 #     RUTINAS DE LA LISTA              #
 ########################################
@@ -238,7 +185,8 @@ create:
 	
      # Abrimos stack pointer para guardar $ra de la llamada de create
      addi $sp,$sp,-4
-     sb $ra,0($sp)
+     sw $ra,0($sp)
+   
 	 
       	
      # LLamamos a init
@@ -247,7 +195,14 @@ create:
      # Si no se pudo hacer, se sale del programa
      beq $v0,-1,exit
      
-     # Si se pudo, se continua
+     # Si se pudo, se crea la cabeza
+     lw $a0,4($sp)
+     
+     # Todavia no hay nodos
+     lw 4($a0),$zero  # direccion de primer nodo
+     lw 8($a0),$zero  # direccion de ultimo nodo
+     lw 16($a0),$zero # cantidad de nodos
+     
      			
      # syscall de imprimir init exitoso
      li $v0,4
@@ -256,94 +211,60 @@ create:
      
      # syscall de imprimir direccion inicial
      li $v0,1
-     lw $a0,4($sp)   # Imprimir mensaje de allocate succesfull
+     lw $a0,4($sp)   # Se recupera del stack pointer la direccion de la cabeza de la lista
      syscall
      
+     # recuperamos el valor de $ra del stack pointer
+     lw $ra,0($sp)
+     
+     addi $sp,$sp,4
+     
+     # Regresamos a donde fuimos llamados 
+     jr $ra
+     
 	
+# Insertar un elemento en la lista
 
-
-
-# insert: inserts new linked-list node in appropriate place in list
-#
-# returns address of new front of list in $s0 (which may be same as old)
-#
-# arguments:
-#   s0 -- pointer to node at front of list (can be NULL)
-#   s1 -- address of string to insert (strptr)
-#
-# registers:
-#   s2 -- address of new node to be inserted (new)
-#   s3 -- address of previous node in list (prev)
-#   s4 -- address of current node in list (cur)
-#
-# clobbers:
-#   a0, a1 (from strcmp)
-#
-# pseudo-code:
-#     // allocate new node
-#     new = malloc(node_size);
-#     new->node_next = NULL;
-#     new->node_str = strptr;
-#
-#     // for loop:
-#     prev = NULL;
-#     for (cur = list_head;  cur != NULL;  cur = cur->node_next) {
-#         if (strcmp(new->node_str,cur->node_str) < 0)
-#             break;
-#         prev = cur;
-#     }
-#
-#     // insertion:
-#     new->node_next = cur;
-#     if (prev != NULL)
-#         prev->node_next = new;
-#     else
-#         list_head = new;
 insert:
-    addi    $sp,$sp,-4
+    # Abrimos el stack pointer para guardar el $ra
+    addi    $sp,$sp,-8
     sw      $ra,0($sp)
 
-    # allocate a new node -- do this first as we'll _always_ need it
-    li      $a0,node_size           # get the struct size
-    jal     malloc
-    move    $s2,$v0                 # remember the address
+    # reservar un nuevo nodo
+    li $a0,node_size           # tamano fijo
+    jal malloc
+    move $s2,$v0                 # la direccion que retorna malloc
+    addi $s1,$s2,$a0             # la siguiente direccion 
+    
+    # inicializar el nuevo nodo
+    sb      $zero,node_next($s2)    # colocamos el apuntador al siguiente como nulo
+    sb      $zero,node_str($s2)       # y el nodo como null
 
-    # initialize the new node
-    sw      $zero,node_next($s2)    # new->node_next = NULL
-    sw      $s1,node_str($s2)       # new->node_str = strptr
+    
+    # Abrimos stack pointer para recuperar string
+    lb $a0,4($sp)
+    
+    # crear los nodos
+    sb $a0,node_str($s2)   # Guardamos la direccion del string
+    sb $s1,node_next($s2)  # la direccion al siguiente
+    
+    
+    # actualizamos cabeza de la lista
+    li $a1,8
+    sb $s2,freeList($a1)  # el ultimo elemento es el actual
+    
+    # aumentamos la cantidad de elementos en 1
+    li $a1,4
+    lb $s3,freeList($a1)
+    addi $s3,$s3,1
+    
+    
+    
+    
+    jr $ra
 
-    # set up for loop
-    li      $s3,0                   # prev = NULL
-    move    $s4,$s0                 # cur = list_head
-    j       insert_test
-
-insert_loop:
-    lw      $a0,node_str($s2)       # get new string address
-    lw      $a1,node_str($s4)       # get current string address
-    jal     strcmp                  # compare them -- new < cur?
-    bltz    $v0,insert_now          # if yes, insert after prev
-
-    move    $s3,$s4                 # prev = cur
-
-    lw      $s4,node_next($s4)      # cur = cur->node_next
-
-insert_test:
-    bnez    $s4,insert_loop         # cur == NULL? if no, loop
-
-insert_now:
-    sw      $s4,node_next($s2)      # new->node_next = cur
-    beqz    $s3,insert_front        # prev == NULL? if yes, fly
-    sw      $s2,node_next($s3)      # prev->node_next = new
-    j       insert_done
-
-insert_front:
-    move    $s0,$s2                 # list_head = new
-
-insert_done:
-    lw      $ra,0($sp)
-    addi    $sp,$sp,4
-    jr      $ra
-
+   
+    
 # print_list: given address of front of list in $a0
 # prints each string in list, one per line, in order
 print_list:
@@ -366,9 +287,7 @@ print_list_exit:
     addi    $sp,$sp,8
     jr      $ra
 
-    # Pseudo-standard library routines:
-    #   wrappers around SPIM/MARS syscalls
-    #
+   
 
 # assumes buffer to read into is in $a0, and max length is in $a1
 get_string:
@@ -376,12 +295,6 @@ get_string:
     syscall
     jr      $ra
 
-# malloc: takes one argument (in $a0) which indicates how many bytes
-# to allocate; returns a pointer to the allocated memory (in $v0)
-malloc:
-    li      $v0,9                   # SPIM/MARS code for "sbrk"
-    syscall
-    jr      $ra
 
 # print_newline: displays newline to standard output
 print_newline:
@@ -395,8 +308,6 @@ print_string:
     li      $v0,4
     syscall
     jr      $ra
-
-
 
 # exit
 exit:
