@@ -12,7 +12,7 @@
     .globl  insert
     .globl  delete
     .globl  main
-    .globl  print_list
+    .globl  print_option
 
 # rutinas de la libreria
     .globl  init
@@ -106,7 +106,7 @@ insert_option:
            
            # Abrimos el stack para guardar este valor
            addi $sp,$sp,-4
-           la $t0,$a0
+           la $t0,($a0)
            sb $t0,0($sp)
            addi $sp,$sp,4
            
@@ -126,7 +126,7 @@ delete_option:
            
            # Abrimos el stack para guardar este valor
            addi $sp,$sp,-4
-           la $t0,$a0
+           la $t0,($a0)
            sb $t0,0($sp)
            addi $sp,$sp,4
            
@@ -189,12 +189,7 @@ create:
      # Si se pudo, se crea la cabeza
      lw $a0,4($sp)
      
-     # Todavia no hay nodos
-     lw 4($a0),$zero  # direccion de primer nodo
-     lw 8($a0),$zero  # direccion de ultimo nodo
-     lw 16($a0),$zero # cantidad de nodos
-     
-     			
+    			
      # syscall de imprimir init exitoso
      li $v0,4
      la $a0,create_success   # Imprimir mensaje de allocate succesfull
@@ -279,26 +274,67 @@ delete:
     
     # Sino, se modifican los apuntadores de la cabeza
     
+    
+    # Recuperamos el $ra
+    lw $ra,0($sp)
+    
+    # Disminuimos la cantidad de elementos en 1
+    li $t0,8
+    lb $a0,freeList($t0)
+    sub $a0,$a0,1
+    sb $a0,freeList($t0)
+    
     # Si $v0 es el primer nodo
     li $t0,4
     lb $a0,freeList($t0)
     
     beq $v0,$a0,change_first
     
- 
+    # Si $v0 es el ultimo nodo
+    li $t0,12
+    lb $a0,freeList($t0)
+    
+    beq $v0,$a0,change_last
+    
+    
+    # Sino, delete listo
+    # Regresamos a donde fuimos llamados
+    jr $ra
     
 	
 change_first:
 
-	
-change_last:	
-
-
+   # Recuperamos la cabeza actual
+   li $t0,4
+   lb $a0,freeList($t0)
    
-    
+   # Accedemos al siguiente de la lista
+   lb $a1,node_next($a0)
+   
+   # Lo colocamos en la cabeza
+   sb $a1,freeList($t0)
+   
+   jr $ra
+
+	
+change_last:
+	
+   # Recuperamos la cabeza actual
+   li $t0,12
+   lb $a0,freeList($t0)
+   
+   # Obtenemos la direccion
+   addi $a1,$a0,-8
+   
+   
+   # Lo colocamos en la cabeza
+   sb $a1,freeList($t0)
+  
+   jr $ra
 
 
-# exit
+
+# salir del programa
 exit:
     li $v0, 10
     syscall
