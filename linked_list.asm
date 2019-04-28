@@ -14,13 +14,12 @@
     .globl  main
     .globl  print_option
 
-# rutinas de la libreria
-    .globl  init
-    .globl  malloc
-    .globl  free
-
 
 .data
+        HEAP_SIZE:    .byte   100
+	init_size:    .byte   0
+	freeList:     .byte   0:1600
+	
 newLine:          .asciiz     "\n"
 INSERT_MSG:       .asciiz     "Ingrese un numero"
 DELETE_MSG:       .asciiz     "Ingrese direccion de bloque a eliminar"
@@ -225,7 +224,7 @@ insert:
     
     # si se puede, se crea el nodo
     move $s2,$v0                 # la direccion que retorna malloc
-    addi $s1,$s2,$a0             # la siguiente direccion 
+    add $s1,$s2,$a0             # la siguiente direccion 
     
     # inicializar el nuevo nodo
     sb      $zero,node_next($s2)    # colocamos el apuntador al siguiente como nulo
@@ -265,7 +264,7 @@ delete:
     
     
     # Si no hay elementos en la lista, error
-    beqz $a0,exit_error
+    beqz $a0,exit
     
     jal free
     

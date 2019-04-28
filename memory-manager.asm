@@ -1,4 +1,9 @@
 # Inicializamos el tamano de la estructura
+
+# rutinas de la libreria
+    .globl  init
+    .globl  malloc
+    .globl  free
 .data 
 	HEAP_SIZE:    .byte   100
 	init_size:    .byte   0
@@ -159,7 +164,7 @@ malloc:
         	   sb $t1,freeList($t0)
         	   
         	   # Actualizamos direccion inicial del bloque
-        	   addi $t1,$t1,$a0
+        	   add $t1,$t1,$a0
         	   
         	   # Guardamos direccion inicial del bloque
         	   addi $t0,$t0,4
@@ -362,7 +367,7 @@ free:
 			lb $t1,freeList($t5)
 			
 			# Guardamos la direccion a la derecha en un registro
-			addi $t1,$t1,$t4 
+			add $t1,$t1,$t4 
 			
 
 			# Guardamos en t3 el size del bloque actual
