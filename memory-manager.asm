@@ -65,8 +65,8 @@ init:
 	sb $t2,freeList($t3)
 	
 	# Abrimos stack para guardar la direccion inicial
-     	addi $sp,$sp,-8
-     	sb $t1,4($sp)
+     	addi $sp,$sp,-4
+     	sb $t1,0($sp)
 	 
 	
 	jr $ra
@@ -74,7 +74,7 @@ init:
 
 malloc:
 	lb $s0, init_size    # Cargamos el valor de init size en t0
-	lb $s2, fin_bloq
+	lb $s2, fin_bloq     # Cargamos el valor donde termina la memoria en s2
 	
 	# t0 registro indice para ver disponibilidad
 	li $t0, 8
@@ -161,7 +161,7 @@ malloc:
         	   addi $t0,$t0,-8
         	   
         	   # Salvamos valor de direccion final de bloque anterior
-        	   sb $t1,freeList($t0)
+        	   lb $t1,freeList($t0)
         	   
         	   # Actualizamos direccion inicial del bloque
         	   add $t1,$t1,$a0
@@ -184,6 +184,8 @@ malloc:
         	   
         	   # Guardamos direccion 
         	   sb $t1,freeList($t0)
+        	   
+        	   jr $ra
         	   
         	
         	

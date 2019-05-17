@@ -2,9 +2,9 @@
 
 # equivalencias (sustituciones textuales)
 
-    .eqv    node_next       0
-    .eqv    node_str        4
-    .eqv    node_size       8
+    .eqv    node_next       4
+    .eqv    node_str        0
+    .eqv    node_size       8    
        
 
 # rutinas de la lista
@@ -96,17 +96,17 @@ loop_main:
 insert_option:
 
 	  li $v0,4
-	  lw $a0,INSERT_MSG
+	  la $a0,INSERT_MSG
     	  syscall
 
  	   # leemos un entero
            li $v0, 5
            syscall
+           move $a0,$v0
            
            # Abrimos el stack para guardar este valor
            addi $sp,$sp,-4
-           la $t0,($a0)
-           sb $t0,0($sp)
+           sb $a0,0($sp)
            addi $sp,$sp,4
            
            jal insert
@@ -196,13 +196,13 @@ create:
      
      # syscall de imprimir direccion inicial
      li $v0,1
-     lw $a0,4($sp)   # Se recupera del stack pointer la direccion de la cabeza de la lista
+     lw $a0,0($sp)   # Se recupera del stack pointer la direccion de la cabeza de la lista
      syscall
      
      # recuperamos el valor de $ra del stack pointer
-     lw $ra,0($sp)
+     lw $ra,4($sp)
      
-     addi $sp,$sp,4
+     addi $sp,$sp,8
      
      # Regresamos a donde fuimos llamados 
      jr $ra
@@ -215,19 +215,25 @@ insert:
     addi    $sp,$sp,-8
     sw      $ra,4($sp)
 
-    # reservar un nuevo nodo
-    li $a0,node_size           # tamano fijo
     jal malloc
+    
+    move $s2,$v0                 # la direccion que retorna malloc
+    add $s1,$s2,$a0             # la siguiente direccion 
+    
+    move $a0,$v0
+    
+    # Imprimimos v0 para ver que tiene
+    li $v0,1
+    syscall
+    
     
     # si hay un error en el malloc, se sale
     beq $v0,-2,exit
     
     # si se puede, se crea el nodo
-    move $s2,$v0                 # la direccion que retorna malloc
-    add $s1,$s2,$a0             # la siguiente direccion 
     
     # inicializar el nuevo nodo
-    sb      $zero,node_next($s2)    # colocamos el apuntador al siguiente como nulo
+    sb      $zero,node_next($s2)      # colocamos el apuntador al siguiente como nulo
     sb      $zero,node_str($s2)       # y el nodo como null
 
     
