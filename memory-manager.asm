@@ -182,6 +182,10 @@ malloc:
         	   # Guardamos direccion 
         	   sb $t1,freeList($t0)
         	   
+        	   li $v0, 1
+        	   move $a0, $t1
+        	   syscall
+        	   
         	   jr $ra
         	   
         	

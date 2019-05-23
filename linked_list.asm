@@ -109,6 +109,12 @@ insert_option:
            sb $a0,0($sp)
            addi $sp,$sp,4
            
+           move $a0, $v0
+           li $v0, 1
+           syscall
+           
+           
+           
            jal insert
            
            j loop_main
@@ -215,14 +221,18 @@ insert:
 
     jal malloc
     
-    move $s2,$v0                 # la direccion que retorna malloc
+    move $a0,$t1 #AAAAAAAAAAAAAAAAAAAAAAAA
+    li $v0, 1
+    syscall
+    
+    move $s2,$t1                 # la direccion que retorna malloc
     add $s1,$s2,$a0             # la siguiente direccion 
     
-    move $a0,$v0
+    #move $a0,$v0
     
     # Imprimimos v0 para ver que tiene
-    li $v0,1
-    syscall
+    #li $v0,1
+    #syscall
     
     
     # si hay un error en el malloc, se sale
