@@ -182,6 +182,9 @@ create:
      # LLamamos a init
      jal init
      
+     # Guardamos en t1 la direccion que retorna malloc en v0
+     move $t1,$v0
+     
      # Si no se pudo hacer, se sale del programa
      beq $v0,-1,exit
     
@@ -193,11 +196,6 @@ create:
      li $v0,4
      la $a0,create_success   # Imprimir mensaje de allocate succesfull
      syscall 
-     
-     # syscall de imprimir direccion inicial
-     li $v0,1
-     lw $a0,0($sp)   # Se recupera del stack pointer la direccion de la cabeza de la lista
-     syscall
      
      # recuperamos el valor de $ra del stack pointer
      lw $ra,4($sp)

@@ -32,7 +32,7 @@ init:
 	# v0 contiene la direccion de inicio de la memoria reservada
 	
 	
-	lb $a0,init_size      # Almacenamos size en un registro temporal
+	move $a0,$v0      # Almacenamos size a0
 	lb $s0,HEAP_SIZE      # Almacenamos HEAP_SIZE en un registro temporal
 	
 	
@@ -41,32 +41,29 @@ init:
 	
 	# syscall allocate
 	li  $v0, 9
-	lb $a0,init_size      # Creamos el espacio de tamano size (allocate)
+	# Creamos el espacio de tamano que esta en a0 (allocate)
 	syscall   
 	 
-	# Guardamos en la etiqueta el valor de v0
+	# Guardamos en la etiqueta el valor de v0 y en t0
 	sb $v0,ini_bloq
-
-	# Guardamos el tamanio en un registro
-	lb $t0,init_size
-	lb $t1,ini_bloq
+	move $t0,$v0
 	
 	# Sumamos la cantidad de espacio para saber donde termina nuestro bloque
-	add $t2,$t1,$t0
+	add $t1,$t0,$a0
 	
-	# Guardamos en la etiqueta el valor de t0
-	sb $t2,fin_bloq
+	# Guardamos en la etiqueta el valor donde termina el bloque
+	sb $t1,fin_bloq
 	
 	# Calculamos pool size para el free list
-	mul $t3,$t0,16
+	mul $t2,$a0,16
 	
 	# Guardamos los valores en el freeList
-	sb $v0,freeList($zero)
-	sb $t2,freeList($t3)
+	sb $t0,freeList($zero)
+	sb $t1,freeList($t2)
 	
 	# Abrimos stack para guardar la direccion inicial
      	addi $sp,$sp,-4
-     	sb $t1,0($sp)
+     	sb $t0,0($sp)
 	 
 	
 	jr $ra
