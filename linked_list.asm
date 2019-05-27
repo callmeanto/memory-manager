@@ -5,18 +5,13 @@
     .eqv    node_next       4
     .eqv    node_str        0
     .eqv    node_size       8    
-       
+      
 
-# rutinas de la lista
-    .globl  create
-    .globl  insert
-    .globl  delete
-    .globl  main
-    .globl  print_option
+
 
 .data	
 
-	
+list_head:        .word 	0
 newLine:          .asciiz     "\n"
 INSERT_MSG:       .asciiz     "Ingrese un numero"
 DELETE_MSG:       .asciiz     "Ingrese direccion de bloque a eliminar"
@@ -25,7 +20,7 @@ malloc_size_msg:  .asciiz     "Ingrese tamano de malloc que desea hacer"
 wel_msg:          .asciiz     "Bienvenido a su manejador de memoria"
 create_msg:       .asciiz     "Ingrese el tamaño de memoria que desea inicializar: "
 create_success:   .asciiz     "Lista creada con exito. La cabeza se encuentra en: "
-free_success_msg:     .asciiz     "Memoria liberada con exito"
+free_success_msg: .asciiz     "Memoria liberada con exito"
 init_menu_msg:    .asciiz     "Indique 1 si desea inicializar la memoria"
 malloc_menu_msg:  .asciiz     "Indique 2 si desea hacer malloc"
 free_menu_msg:    .asciiz     "Indique 3 si desea hacer free"
@@ -33,8 +28,9 @@ create_menu_msg:  .asciiz     "Indique 4 si desea crear una lista"
 insert_menu_msg:  .asciiz     "Indique 5 si desea insertar en la lista"
 delete_menu_msg:  .asciiz     "Indique 6 si desea eliminar en la lista"
 print_menu_msg:   .asciiz     "Indique 7 si desea imprimir la lista"
+array_menu_msg:   .asciiz     "Indique 8 si desea probar caso 6"
 exit_menu_msg:    .asciiz     "Indique 0 para salir del programa"
-
+create_error_msg:  .asciiz    "no esta inicializada la memoria"
    
 
 .text
@@ -72,7 +68,7 @@ main:
      syscall 
      
      li $v0,4
-     la $a0,free_menu_msg      # Mensaje de init
+     la $a0,free_menu_msg      # Mensaje de free
      syscall 
      
      li $v0,4
@@ -80,7 +76,7 @@ main:
      syscall 
      
      li $v0,4
-     la $a0,create_menu_msg      # Mensaje de init
+     la $a0,create_menu_msg      # Mensaje de create
      syscall 
           	     	
      
@@ -108,6 +104,16 @@ main:
      
      li $v0,4
      la $a0,print_menu_msg      # Mensaje de imprimir lista
+     syscall  
+     
+     
+     # salto de linea
+     li $v0, 4
+     la $a0, newLine
+     syscall
+     
+     li $v0,4
+     la $a0,array_menu_msg      # Mensaje de crear arreglo
      syscall  
      
      # salto de linea
@@ -145,6 +151,9 @@ main:
      
      # Ve a delete si opcion 6
      beq $v0,6,delete
+     
+     # Ve a imprimit si opcion 7
+     beq $v0,7,print_option
      
      # Ve a imprimit si opcion 7
      beq $v0,7,print_option
@@ -240,17 +249,17 @@ malloc_option:
         syscall 
         
         
-        # imprimir direccion de memoria
+        # imprimir direccion de memoria inicial
         move $a0,$t1
         li $v0,1
         syscall
         
+       
         # salto de linea
         li $v0,4
         la $a0,newLine
         syscall
-        
-      
+       
         
         j main
 
@@ -375,67 +384,65 @@ print_option:
 create:
 	
      # Abrimos stack pointer para guardar $ra de la llamada de create
-     addi $sp,$sp,-4
-     sw $ra,0($sp)
+     #addi $sp,$sp,-4
+     #sw $ra,0($sp)
+     
+     #Verificar si el manejador no fue inicializado
+     lw $t1, freeList($zero)
+     beq $t1, 0, create_error
          	
-     # LLamamos a init
-     jal init
-     
-     # Guardamos en t1 la direccion que retorna malloc en v0
-     move $t1,$v0
-     
-     # Si no se pudo hacer, se sale del programa
-     beq $v0,-1,exit
-    
+   
      # Si se pudo, se crea la cabeza
-     lw $a0,4($sp)
+     lw $t1,ini_bloq
+     sw $t1,list_head
      
     			
-     # syscall de imprimir init exitoso
+     # syscall de imprimir create exitoso
      li $v0,4
      la $a0,create_success   # Imprimir mensaje de allocate succesfull
      syscall 
      
-     # recuperamos el valor de $ra del stack pointer
-     lw $ra,4($sp)
+     move $a0,$t1
+     li $v0,1
+     syscall
      
-     addi $sp,$sp,8
+     # recuperamos el valor de $ra del stack pointer
+     #lw $ra,4($sp)
+     
+     #addi $sp,$sp,8
      
      # Regresamos a donde fuimos llamados 
-     jr $ra
+     j main
      
 	
 # Insertar un elemento en la lista
 
 insert:
     # Abrimos el stack pointer para guardar el $ra
-    addi    $sp,$sp,-8
-    sw      $ra,4($sp)
-
+    #addi    $sp,$sp,-8
+    #sw      $ra,4($sp)
+    
+    move $t1,$a0
+    
+    li $a0,8
     jal malloc
     
     move $s2,$v0                 # la direccion que retorna malloc
     add $s1,$s2,$a0             # la siguiente direccion 
-    
-    move $a0,$v0
-   
-    
+        
     # si hay un error en el malloc, se sale
     beq $v0,-2,exit
     
     # si se puede, se crea el nodo
     
     # inicializar el nuevo nodo
-    sw      $zero,node_next($s2)      # colocamos el apuntador al siguiente como nulo
-    sw      $zero,node_str($s2)       # y el nodo como null
+    #sw      $zero,node_next($s2)      # colocamos el apuntador al siguiente como nulo
+    #sw      $zero,node_str($s2)       # y el nodo como null
 
     
-    # Abrimos stack pointer para recuperar string
-    lw $a0,4($sp)
-    
     # crear los nodos
-    sb $a0,node_str($s2)   # Guardamos la direccion del string
-    sb $s1,node_next($s2)  # la direccion al siguiente
+    sw $t1,node_str($s2)   # Guardamos la direccion del string
+    sw $s1,node_next($s2)  # la direccion al siguiente
     
     
     # actualizamos cabeza de la lista
@@ -530,7 +537,12 @@ change_last:
   
    jr $ra
 
-
+create_error:
+   li $v0, 4
+   la $a0, create_error_msg
+   syscall
+   
+   
 
 # salir del programa
 exit:

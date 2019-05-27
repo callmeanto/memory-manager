@@ -5,8 +5,8 @@
 .data
 	
 	
-	HEAP_SIZE:    .word   100
-	freeList:     .word   0:400
+	HEAP_SIZE:    .word   500
+	freeList:     .word   0:2000
 	init_size:    .word   0
 	ini_bloq:     .word   0  # etiqueta que denota la direccion de inicio del bloque del init
 	fin_bloq:     .word   0  # etiqueta que denota la direccion del final de bloque del init
@@ -165,7 +165,6 @@ malloc:
       		lw $v0,freeList($t0)
       		addi $t0,$t0,4
       		
-      		addi $v0,$v0,1
       		sw $v0,freeList($t0)    
         	
         	# Verificamos el tamanio
@@ -177,10 +176,7 @@ malloc:
         	# Si no existe caja creada
         	beqz $t3,create_box
         	
-        	create_box:
-        	   # Asignar size
-        	   sw $a0,freeList($t2)
-        	   
+        	create_box: 
         	   # Apunta a direccion inicial de bloque actual
         	   addi $t2,$t2,-8
         	   
@@ -189,10 +185,29 @@ malloc:
         	   
         	   # Actualizamos direccion final del bloque
         	   add $t1,$t1,$a0
+        	   
+        	   lw $t3,fin_bloq
+        	   bgt $t1,$t3,malloc_error
+        	   
+        	   
         	   addi $t2,$t2,12
         	   sw $t1,freeList($t2)
+        	   
+        	  addi $t2,$t2,-4 
+        	  # Asignar size
+        	  sw $a0,freeList($t2)
+        	  
         	    
-     
+     		
+     		addi $sp,$sp,-4
+     		sw $v0,0($sp)   
+     		
+        	# imprimir direccion de memoria final
+        	move $a0,$t1
+        	li $v0,1
+        	syscall
+        	
+        	lw $v0,0($sp)
         	   
         	   jr $ra
         	   
@@ -260,7 +275,7 @@ malloc:
         	     # Funcion para asignar nuevo bloque de bytes sobrantes (cambiar apuntadores)
         	     disp:
 			# Accedemos a la direccion inicial
-			addi $t0,$t0,-4
+			addi $t0,$t0,-8
 			
 			# Guardamos en la posicion de direccion inicial el nuevo valor
 			sw $t4,freeList($t0)        	     
@@ -288,6 +303,20 @@ malloc:
         	     	
         	     	# Devolvemos el apuntador a disponibilidad
         	     	addi $t0,$t0,-4
+        	     	
+        	     	move $v0,$t4
+        	     	
+    	     	        addi $sp,$sp,-4
+	     		sw $v0,0($sp)   
+     		
+     			
+        		# imprimir direccion de memoria final
+        		move $a0,$t4
+        		li $v0,1
+        		syscall
+        	
+	        	lw $v0,0($sp)
+
         	     	
         	     	jr $ra
         	     
@@ -321,6 +350,8 @@ free:
 			
 			beq $t1,1,free_success
 			
+			beq $t1,0,free_error
+			
 		
 		free_success:
 		
@@ -328,33 +359,52 @@ free:
 			li $v0,0
 			sw $v0,freeList($t0)
 			
+			
+			
 			# Restamos la cantidad de elementos
 			addi $t0,$t0,4
 			lw $t1,freeList($t0)
 			lw $t2,cant_elem
 			sub $t2,$t2,$t1
 			
-			sw $t1,cant_elem
+			sw $t2,cant_elem
 			
 			jr $ra
 			
-			# Ahora buscamos linealmente si hay algun bloque libre adyacente
+			# Movemos el size de t1 a t3
+			#move $t3,$t1
 			
-			# Buscamos a la izquierda
+			#addi $sp,$sp,-4
+			#sw $ra,0($sp)
 			
-			# Movemos el apuntador $t0 a direccion inicial  
-			addi $t0,$t0,-8
+			# Actualizamos direccion final
 			
-			# La guardamos en el registro
+			
+			#jal linear_search
+			
+			# Si regresa es porque no hay bloques adyacentes disponibles
+			
+			
+			
+
+###################################		
+#  FUNCIONES AUXILIARES           #
+###################################
+
+
+# Ahora buscamos linealmente si hay algun bloque libre adyacente
+			
+# Buscamos a la izquierda
+			
+# Movemos el apuntador $t0 a direccion inicial  
+addi $t0,$t0,-8
+			
+# La guardamos en el registro
 			lw $t1,freeList($t0)
 			
-			# Obtenemos size
-			addi $t0,$t0,8
-			lw $t4,freeList($t0)
-			addi $t0,$t0,-8
 			
 			# Guardamos la direccion a la izquierda en un registro
-			sub $t1,$t1,$t4
+			sub $t1,$t1,$t3
 			
 			
 			# Guardamos el apuntador en un registro
@@ -405,10 +455,6 @@ free:
 				  
 			
 			
-
-###################################		
-#  FUNCIONES AUXILIARES           #
-###################################
 while_2:
 	lw $t3,freeList($t0)
 				
@@ -432,14 +478,26 @@ while_2:
 	j while_2
 	
 				
-				
+# Condicion de dir inicial			
 segunda_cond2:
 	addi $t0,$t0,4
 	lw $t1,freeList($t0)
 				  
 	# Esta libre
 	beq $t1,0,merge
+	
+	
+	lw $ra,0($sp)
+	bne $t1,0,goback
+			
+	
+# Condicion de dir final
+segunda_cond3:
+	addi $t0,$t0,-8
+	lw $t1,freeList($t0)
 				  
+	# Esta libre
+	beq $t1,0,merge	  
 
 # Pegar bloques				  
 merge:
