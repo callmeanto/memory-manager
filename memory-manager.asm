@@ -193,23 +193,23 @@ malloc:
         	   addi $t2,$t2,12
         	   sw $t1,freeList($t2)
         	   
-        	  addi $t2,$t2,-4 
-        	  # Asignar size
-        	  sw $a0,freeList($t2)
+        	   addi $t2,$t2,-4 
+        	   # Asignar size
+        	   sw $a0,freeList($t2)
         	  
         	    
      		
-     		addi $sp,$sp,-4
-     		sw $v0,0($sp)   
+     		#addi $sp,$sp,-4
+     		#sw $v0,0($sp)   
      		
-        	# imprimir direccion de memoria final
-        	move $a0,$t1
-        	li $v0,1
-        	syscall
+        	# imprimir direccion de memoria inicial
+        	#move $a0,$v0
+        	#li $v0,1
+        	#syscall
         	
-        	lw $v0,0($sp)
+        	#lw $v0,0($sp)
         	   
-        	   jr $ra
+        	jr $ra
         	   
         	
         	
@@ -306,16 +306,16 @@ malloc:
         	     	
         	     	move $v0,$t4
         	     	
-    	     	        addi $sp,$sp,-4
-	     		sw $v0,0($sp)   
+    	     	        #addi $sp,$sp,-4
+	     		#sw $v0,0($sp)   
      		
      			
         		# imprimir direccion de memoria final
-        		move $a0,$t4
-        		li $v0,1
-        		syscall
+        		#move $a0,$t4
+        		#li $v0,1
+        		#syscall
         	
-	        	lw $v0,0($sp)
+	        	#lw $v0,0($sp)
 
         	     	
         	     	jr $ra

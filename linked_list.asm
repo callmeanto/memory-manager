@@ -4,13 +4,14 @@
 
     .eqv    node_next       4
     .eqv    node_str        0
-    .eqv    node_size       8    
+    .eqv    node_size       8                   
       
 
 
 
 .data	
-
+array:            .word        0
+hola:             .asciiz       "hola"
 list_head:        .word 	0
 newLine:          .asciiz     "\n"
 INSERT_MSG:       .asciiz     "Ingrese un numero"
@@ -28,7 +29,9 @@ create_menu_msg:  .asciiz     "Indique 4 si desea crear una lista"
 insert_menu_msg:  .asciiz     "Indique 5 si desea insertar en la lista"
 delete_menu_msg:  .asciiz     "Indique 6 si desea eliminar en la lista"
 print_menu_msg:   .asciiz     "Indique 7 si desea imprimir la lista"
-array_menu_msg:   .asciiz     "Indique 8 si desea probar caso 6"
+print2_menu_msg:  .asciiz     "Indique 8 si desea imprimir varias listas"
+lists_print_msg:  .asciiz     "Ingrese la direccion del primer nodo"
+array_menu_msg:   .asciiz     "Indique 9 si desea probar caso 6"
 exit_menu_msg:    .asciiz     "Indique 0 para salir del programa"
 create_error_msg:  .asciiz    "no esta inicializada la memoria"
    
@@ -111,7 +114,18 @@ main:
      li $v0, 4
      la $a0, newLine
      syscall
+ 
+     li $v0,4
+     la $a0,print2_menu_msg      # Mensaje de imprimir varias listas
+     syscall  
      
+     
+     # salto de linea
+     li $v0, 4
+     la $a0, newLine
+     syscall
+
+         
      li $v0,4
      la $a0,array_menu_msg      # Mensaje de crear arreglo
      syscall  
@@ -155,8 +169,11 @@ main:
      # Ve a imprimit si opcion 7
      beq $v0,7,print_option
      
-     # Ve a imprimit si opcion 7
-     beq $v0,7,print_option
+     # Ve a imprimir varias listas si opcion 8
+     beq $v0,8,print2_option
+     
+     # Ve a caso 6 listas si opcion 9
+     beq $v0,9,case_6
      
      # Se cierra el programa si es 0
      beqz $v0,exit
@@ -208,14 +225,6 @@ init_option:
         la $a0,newLine
         syscall
         
-        
-        # imprimir direccion de memoria final
-        lw $t1,init_size
-        mul $t1,$t1,16
-        lw $t1,freeList($t1)
-        li $v0,1
-        move $a0,$t1
-        syscall
                
         j main
 
@@ -237,10 +246,14 @@ malloc_option:
         move $a0,$v0
         
         jal malloc
+        
+        addi $sp,$sp,-4
+        sw $v0,0($sp)
+        
         move $t1,$v0
         
          # Si no se pudo hacer, se sale del programa
-        beq $v0,-2,exit
+        beq $v0,-2,main
    
    			
         # syscall de imprimir init exitoso
@@ -344,29 +357,31 @@ delete_option:
 print_option:
 	
 	# Accedemos a la cabeza de la lista
-	li $t0,4
-	lb $a0,freeList($t0)
 	
-	# Almacenamos la cantidad de elementos en un registro
-	addi $t0,$t0,8
-	lb $a1,freeList($t0)
+	# apuntador a primer nodo de la lista
+	lw $t0,list_head
 	
-	# reiniciamos $t0 para usarlo de indexador
-	# t0 contiene la direccion de inicio del primer nodo
-	move $t0,$a0
+	addi $t4,$t0,-12
+	
+	
+	# size
+	lw $t1,4($t4)
+	
+	li $t2,0
+	
 	
 	while:
-          beq $t0, $a1, exit
+          beq $t2, $t1, main
    
-          # Recuperamos el valor  
-          lw $t1, node_str($t0)
+          # Recuperamos el valor del nodo  
+          lw $t3, node_str($t0)
           
           # Incrementamos el indice
           lw $t0,node_next($t0)
              
           # syscall para imprimir
           li  $v0, 1
-          move $a0, $t1
+          move $a0, $t3
           syscall
           
           # salto de linea
@@ -374,9 +389,111 @@ print_option:
           la $a0, newLine
           syscall
           
+          addi $t2,$t2,1
+          
           j while
-       
 
+print2_option:
+
+	li $v0,4
+	la $a0,newLine
+	syscall
+	
+	li $v0,4
+	la $a0,lists_print_msg
+	syscall
+	
+	# Leemos la cabeza de la lista
+	li $v0,5
+	syscall
+	
+	
+	move $t0,$v0
+	
+	addi $t4,$t0,-12
+	
+	
+	# size
+	lw $t1,4($t4)
+	
+	li $t2,0
+	
+	
+	while_list:
+          beq $t2, $t1, main
+   
+          # Recuperamos el valor del nodo  
+          lw $t3, node_str($t0)
+          
+          # Incrementamos el indice
+          lw $t0,node_next($t0)
+          
+          
+          # salto de linea
+          li $v0,4
+	  la $a0,newLine
+	  syscall
+             
+          # syscall para imprimir
+          li  $v0, 1
+          move $a0, $t3
+          syscall
+          
+          
+          addi $t2,$t2,1
+          
+          j while_list
+      
+      
+ case_6:
+ 
+  lw $t0,0($sp)
+	
+  li $t1,0
+	
+	
+  loop_array:
+         beq $t1, 100, main
+   
+          sw $t1,($t0)
+          
+         
+          # salto de linea
+          li $v0,4
+	  la $a0,newLine
+	  syscall
+            
+          addi $t1,$t1,1
+          
+          addi $t0,$t0,4
+          
+         
+          
+          j loop_array
+ 	
+
+print_array:
+
+  lw $t0,0($sp)
+  
+  jal case_6
+  
+  li $t2,0
+  
+  loop_print:
+  
+  	  beq $t2,100,main
+  	  
+  	  lw $t1,($t0)
+  	  # syscall para imprimir
+          li  $v0, 1
+          move $a0, $t1
+          syscall
+          
+          addi $t0,$t0,4
+          addi $t2,$t2,1
+
+	
 ########################################
 #     RUTINAS DE LA LISTA              #
 ########################################
@@ -390,11 +507,47 @@ create:
      #Verificar si el manejador no fue inicializado
      lw $t1, freeList($zero)
      beq $t1, 0, create_error
-         	
-   
+     
+         
+     
+     # Creamos bloque en freeList
+     #li $t0,4
+     #sw $t1,freeList($t0)
+     
+     # Disponibilidad
+     #addi $t0,$t0,4
+     #li $t2,1
+     #sw $t2,freeList($t0)
+     
+     # SIze
+     #addi $t0,$t0,4
+     #li $t2,12
+     #sw $t2,freeList($t0)
+     
+     # Dir final
+     #addi $t0,$t0,4
+     #add $t1,$t2,$t1
+     #sw $t1,freeList($t0)
+     
+     li $a0,12
+     jal malloc
+     
+     move $t1,$v0
+     
      # Si se pudo, se crea la cabeza
-     lw $t1,ini_bloq
-     sw $t1,list_head
+     addi $t2,$t1,12
+     sw $t2,list_head   
+  
+     # Guardamos direccion inicial
+     sw $t2,0($t1)
+     
+     # Guardamos size
+     li $t3,0
+     sw $t3,4($t1)
+     
+     # Guardamos direccion final
+     sw $t2,8($t1)
+     
      
     			
      # syscall de imprimir create exitoso
@@ -402,9 +555,38 @@ create:
      la $a0,create_success   # Imprimir mensaje de allocate succesfull
      syscall 
      
-     move $a0,$t1
+     # salto de linea
+     li $v0,4
+     la $a0,newLine
+     syscall
+     
+     lw $a0,0($t1)
      li $v0,1
      syscall
+     
+     # salto de linea
+     li $v0,4
+     la $a0,newLine
+     syscall 
+     
+     lw $a0,4($t1)
+     li $v0,1
+     syscall
+     
+     # salto de linea
+     li $v0,4
+     la $a0,newLine
+     syscall
+     
+     lw $a0,8($t1)
+     li $v0,1
+     syscall
+     
+     # salto de linea
+     li $v0,4
+     la $a0,newLine
+     syscall
+     
      
      # recuperamos el valor de $ra del stack pointer
      #lw $ra,4($sp)
@@ -418,41 +600,79 @@ create:
 # Insertar un elemento en la lista
 
 insert:
-    # Abrimos el stack pointer para guardar el $ra
-    #addi    $sp,$sp,-8
-    #sw      $ra,4($sp)
+  
+    move $a3,$a0
     
-    move $t1,$a0
+    addi $sp,$sp,-4
+    sw $ra,0($sp)
+    
     
     li $a0,8
     jal malloc
     
+    lw $ra,0($sp)
+    
     move $s2,$v0                 # la direccion que retorna malloc
-    add $s1,$s2,$a0             # la siguiente direccion 
-        
+    
     # si hay un error en el malloc, se sale
     beq $v0,-2,exit
     
-    # si se puede, se crea el nodo
     
-    # inicializar el nuevo nodo
-    #sw      $zero,node_next($s2)      # colocamos el apuntador al siguiente como nulo
-    #sw      $zero,node_str($s2)       # y el nodo como null
-
+    # actualizar la cabeza
+    lw $t2,list_head
+    addi $t2,$t2,-12
+    lw $t3,8($t2)
+   
+     # Aumentamos en 1 el size de la lista
+    lw $t4,4($t2)
+    addi $t4,$t4,1
+    sw $t4,4($t2) 
+      
+    # veamos si es el primer nodo
+    beq $t2,$t3,node_first
+    
+    # Modificamos el apuntador de next del nodo anterior (ultimo nodo)
+    sw $s2,node_next($t3)
+            
+    # Modificamos el apuntador a la direccion del ultimo nodo (actual a insertar)
+    sw $s2,8($t2)
+    
+    
+    # salto de linea
+    li $v0,4
+    la $a0,newLine
+    syscall
+    
+    # imprimir s2      
+    li $v0,1
+    move $a0,$s2
+    syscall
+    
+     # salto de linea
+    li $v0,4
+    la $a0,newLine
+    syscall
+    
+    
+    # imprimir a3      
+    li $v0,1
+    move $a0,$a3
+    syscall
+   
     
     # crear los nodos
-    sw $t1,node_str($s2)   # Guardamos la direccion del string
-    sw $s1,node_next($s2)  # la direccion al siguiente
+    sw $a3,node_str($s2)   # Guardamos la direccion del string
+    li $t5,0  # la direccion al siguiente (NULL)
+    sw $t5,node_next($s2)
+    
+   
+    jr $ra
     
     
-    # actualizamos cabeza de la lista
-    li $a1,8
-    sw $s2,freeList($a1)  # el ultimo elemento es el actual
-    
-    # aumentamos la cantidad de elementos en 1
-    li $a1,4
-    lw $s3,freeList($a1)
-    addi $s3,$s3,1
+node_first:
+
+    sw $a3,node_str($s2)
+    sw $zero,node_next($s2)
     
     jr $ra
 
