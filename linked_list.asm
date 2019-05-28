@@ -21,6 +21,7 @@ malloc_size_msg:  .asciiz     "Ingrese tamano de malloc que desea hacer"
 wel_msg:          .asciiz     "Bienvenido a su manejador de memoria"
 create_msg:       .asciiz     "Ingrese el tamaño de memoria que desea inicializar: "
 create_success:   .asciiz     "Lista creada con exito. La cabeza se encuentra en: "
+malloc_success_msg:   .asciiz     "Memoria reservada con exito. La direccion inicial se encuentra en: "
 free_success_msg: .asciiz     "Memoria liberada con exito"
 init_menu_msg:    .asciiz     "Indique 1 si desea inicializar la memoria"
 malloc_menu_msg:  .asciiz     "Indique 2 si desea hacer malloc"
@@ -211,7 +212,7 @@ init_option:
    			
         # syscall de imprimir init exitoso
         li $v0,4
-        la $a0,create_success   # Imprimir mensaje de allocate succesfull
+        la $a0,init_success   # Imprimir mensaje de allocate succesfull
         syscall 
         
         
@@ -250,15 +251,18 @@ malloc_option:
         addi $sp,$sp,-4
         sw $v0,0($sp)
         
-        move $t1,$v0
-        
+	  
          # Si no se pudo hacer, se sale del programa
         beq $v0,-2,main
-   
+   	
+        move $t1,$v0
+        
+   	
+   	lw $t1,0($sp)
    			
         # syscall de imprimir init exitoso
         li $v0,4
-        la $a0,create_success   # Imprimir mensaje de allocate succesfull
+        la $a0,malloc_success_msg   # Imprimir mensaje de allocate succesfull
         syscall 
         
         
@@ -462,6 +466,11 @@ print2_option:
           li $v0,4
 	  la $a0,newLine
 	  syscall
+	  
+	  # syscall para imprimir
+          li  $v0, 1
+          move $a0, $t1
+          syscall
             
           addi $t1,$t1,1
           
@@ -485,10 +494,7 @@ print_array:
   	  beq $t2,100,main
   	  
   	  lw $t1,($t0)
-  	  # syscall para imprimir
-          li  $v0, 1
-          move $a0, $t1
-          syscall
+  	  
           
           addi $t0,$t0,4
           addi $t2,$t2,1

@@ -16,9 +16,8 @@
 	msize_msg:           .asciiz "Ingrese el tamaño de memoria que desea asignar:  "
 	menu_msg:            .asciiz "Indique la operacion que desea realizar: "
 	init_error_msg:      .asciiz "Error: el tamaño ingresado supera el almacenamiento del heap"
-	init_success:        .asciiz "Memoria inicializada correctamente"
-	malloc_error_msg:    .asciiz "Error: el tamaño ingresado no está disponible"
-	malloc_success_msg:  .asciiz "Memoria asignada correctamente"	 
+	init_success:        .asciiz "Memoria inicializada correctamente. La direccion inicial es: "
+	malloc_error_msg:    .asciiz "Error: el tamaño ingresado no está disponible" 
 	free_error_msg:      .asciiz "Error: la direccion ingresada no es correcta" 
 .text 
 	
@@ -196,20 +195,9 @@ malloc:
         	   addi $t2,$t2,-4 
         	   # Asignar size
         	   sw $a0,freeList($t2)
-        	  
-        	    
-     		
-     		#addi $sp,$sp,-4
-     		#sw $v0,0($sp)   
-     		
-        	# imprimir direccion de memoria inicial
-        	#move $a0,$v0
-        	#li $v0,1
-        	#syscall
-        	
-        	#lw $v0,0($sp)
         	   
-        	jr $ra
+        	   
+        	   jr $ra
         	   
         	
         	
